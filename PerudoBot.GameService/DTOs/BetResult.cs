@@ -9,6 +9,7 @@ namespace PerudoBot.GameService
         public int BetPips { get; set; }
         public int BetQuantity { get; set; }
         public string BetType { get; set; }
+        public double BetOdds{ get; set; }
         public bool IsSuccessful { get; set; }
     }
 }

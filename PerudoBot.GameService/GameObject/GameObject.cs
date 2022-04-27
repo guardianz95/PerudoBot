@@ -2,6 +2,7 @@
 using PerudoBot.Database.Data;
 using PerudoBot.Extensions;
 using PerudoBot.GameService.Extensions;
+using PerudoBot.GameService.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -725,26 +726,34 @@ namespace PerudoBot.GameService
 
                 var actualQuantity = gameDice.Where(x => x == targetPips || x == 1).Count();
 
+                var isSuccessful = false;
+                var betOdds = 0.0;
+
+                if (bet.BetType == BetType.Liar)
+                {
+                    isSuccessful = actualQuantity < targetQuantity;
+                    betOdds = 1.0 / (1 - BetHelpers.BidChanceOrMore(targetPips, targetQuantity, gameDice.Count));
+                }
+
+                if (bet.BetType == BetType.Exact)
+                {
+                    isSuccessful = actualQuantity == targetQuantity;
+                    betOdds = 1.0 / BetHelpers.BidChance(targetPips, targetQuantity, gameDice.Count); 
+                }
+
+                betOdds = Math.Min(betOdds, 4.0);
+                betOdds = Math.Max(betOdds, 1.5);
+
                 var betResult = new BetResult
                 {
                     BettingPlayer = bet.BettingPlayer,
                     BetAmount = bet.BetAmount,
                     BetQuantity = targetQuantity,
                     BetPips = targetPips,
-                    BetType = bet.BetType
+                    BetType = bet.BetType,
+                    IsSuccessful = isSuccessful,
+                    BetOdds = betOdds
                 };
-
-                if (bet.BetType == BetType.Liar)
-                {
-                    betResult.IsSuccessful = (actualQuantity < targetQuantity);
-                }
-
-                if (bet.BetType == BetType.Exact)
-                {
-                    betResult.IsSuccessful = (actualQuantity == targetQuantity);
-                }
-
-                bet.IsSuccessful = betResult.IsSuccessful;
 
                 betResults.Add(betResult);
             }

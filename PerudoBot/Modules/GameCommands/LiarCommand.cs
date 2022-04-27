@@ -89,15 +89,15 @@ namespace PerudoBot.Modules
             foreach (var betResult in betResults)
             {
                 var pointsUsed = betResult.BetAmount;
-                var pointsGained = betResult.IsSuccessful ? pointsUsed * 2 : 0;
-                if (betResult.BetType == BetType.Exact) pointsGained *= 2;
+                var pointsGained = betResult.IsSuccessful ? (int) Math.Round(pointsUsed * betResult.BetOdds) : 0;
 
                 AddUsedPoints(betResult.BettingPlayer.Id, pointsUsed);
                 AddTotalPoints(betResult.BettingPlayer.Id, pointsGained);
 
                 var winsOrLoses = betResult.IsSuccessful ? "wins" : "loses";
                 var pointChange = Math.Abs(pointsGained - pointsUsed);
-                await SendMessageAsync($":dollar: {betResult.BettingPlayer.Name} **{winsOrLoses}** {pointChange} points betting {betResult.BetType.ToLower()} on `{betResult.BetQuantity}` ˣ {betResult.BetPips.ToEmoji()}.");
+                var odds = betResult.IsSuccessful ? $"*(x{betResult.BetOdds:0.0})* " : "";
+                await SendMessageAsync($":dollar: {betResult.BettingPlayer.Name} **{winsOrLoses} {pointChange}** {odds}points betting {betResult.BetType.ToLower()} on `{betResult.BetQuantity}` ˣ {betResult.BetPips.ToEmoji()}.");
             }
         }
 
