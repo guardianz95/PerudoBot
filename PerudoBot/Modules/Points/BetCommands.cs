@@ -19,6 +19,8 @@ namespace PerudoBot.Modules
 
             if (!int.TryParse(betText[1], out int betAmount)) return;
 
+            if (betAmount <= 0) return;
+
             SetGuildAndChannel();
             var game = _gameHandler.GetActiveGame();
             if (game == null) return;
