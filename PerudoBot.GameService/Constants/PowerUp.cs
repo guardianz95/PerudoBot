@@ -37,11 +37,11 @@ namespace PerudoBot.GameService.Constants
             Cost = 20
         };
 
-        public static PowerUp Gamble = new PowerUp
+        public static PowerUp Reverse = new PowerUp
         {
-            Name = "Gamble",
-            Description = "Transform your dice unpredictably, use `!odds` to find out more",
-            Cost = 40
+            Name = "Reverse",
+            Description = "Reverse player order, takes effect immediately",
+            Cost = 20
         };
 
         public static PowerUp Steal = new PowerUp
@@ -51,9 +51,16 @@ namespace PerudoBot.GameService.Constants
             Cost = 40
         };
 
+        public static PowerUp Gamble = new PowerUp
+        {
+            Name = "Gamble",
+            Description = "Transform your dice unpredictably, use `!odds` to find out more",
+            Cost = 40
+        };
+
         public static List<PowerUp> PowerUpList = new List<PowerUp>
         {
-             Steal, Gamble, Touch, Lifetap
+             Steal, Gamble, Touch, Lifetap, Reverse
         };
     }
 }

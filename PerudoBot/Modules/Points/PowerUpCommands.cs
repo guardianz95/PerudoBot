@@ -122,6 +122,22 @@ namespace PerudoBot.Modules
             await SendOutDice(playersToUpates, isUpdate: true);
         }
 
+        [Command("reverse")]
+        public async Task Reverse()
+        {
+            SetGuildAndChannel();
+            var game = _gameHandler.GetActiveGame();
+            if (game == null) return;
+
+            var powerUpPlayerId = GetPlayerId(Context.User.Id, Context.Guild.Id);
+            var powerUpPlayer = game.GetPlayer(powerUpPlayerId);
+
+            if (!await AbleToUsePowerUp(game, powerUpPlayer, PowerUps.Reverse)) return;
+
+            game.ReversePlayerOrder();
+            await SendMessageAsync($":zap: **Reverse**: {powerUpPlayer.Name} changed player order.");
+        }
+
         [Command("lifetap")]
         public async Task Lifetap()
         {
@@ -207,8 +223,9 @@ namespace PerudoBot.Modules
         public async Task PowerUpInfo()
         {
             var builder = new EmbedBuilder().WithTitle($"Power Up Information");
+            var powerUpList = PowerUps.PowerUpList.OrderByDescending(x => x.Cost);
 
-            foreach (var powerUp in PowerUps.PowerUpList)
+            foreach (var powerUp in powerUpList)
             {
                 builder.AddField($":zap: {powerUp.Name} - `{powerUp.Cost}` pts", $"{powerUp.Description}");
             }
@@ -244,8 +261,8 @@ namespace PerudoBot.Modules
                 return false;
             }
 
-            var userId = GetUserId(player);
-            if (!powerUp.OutOfTurn && Context.User.Id != userId)
+            var currentPlayer = game.GetCurrentPlayer();
+            if (!powerUp.OutOfTurn && currentPlayer.PlayerId != player.PlayerId)
             {
                 await SendMessageAsync($"You can only use :zap: {powerUp.Name} on your own turn");
                 return false;

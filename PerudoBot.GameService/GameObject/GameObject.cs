@@ -325,6 +325,8 @@ namespace PerudoBot.GameService
                 gamePlayer.TurnOrder = turnOrder;
                 turnOrder += 1;
             }
+
+            _db.SaveChanges();
         }
 
         public void Bid(int playerId, int quantity, int pips)
