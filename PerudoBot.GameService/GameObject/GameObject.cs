@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PerudoBot.Database.Data;
+using PerudoBot.Extensions;
 using PerudoBot.GameService.Extensions;
 using System;
 using System.Collections.Generic;
@@ -13,12 +14,14 @@ namespace PerudoBot.GameService
         private readonly ulong _channelId;
         private readonly ulong _guildId;
         private Game _game;
+        private Random _random;
 
         public GameObject(PerudoBotDbContext db, ulong channelId, ulong guildId)
         {
             _db = db;
             _channelId = channelId;
             _guildId = guildId;
+            _random = new Random();
         }
 
         public bool LoadActiveGame()
@@ -172,6 +175,12 @@ namespace PerudoBot.GameService
                 .ToList();
         }
 
+        public bool HasPlayerWithDice(int playerId)
+        {
+            return _game.GamePlayers
+                .Any(x => x.PlayerId == playerId && x.NumberOfDice > 0);
+        }
+
         public string GetMode()
         {
             if (_game.Mode == GameMode.SuddenDeath) return "Sudden Death";
@@ -208,7 +217,7 @@ namespace PerudoBot.GameService
             }
 
             var activeGamePlayers = _game.GamePlayers.Where(x => x.NumberOfDice > 0);
-            foreach(var player in _game.GamePlayers)
+            foreach (var player in _game.GamePlayers)
             {
                 player.IsAutoLiar = false;
             }
@@ -254,14 +263,13 @@ namespace PerudoBot.GameService
 
 
             // and set dice
-            var r = new Random();
             var gamePlayers = _game.GamePlayers.ToList();
             foreach (var player in gamePlayers)
             {
                 var dice = new List<int>();
                 for (int i = 0; i < player.NumberOfDice; i++)
                 {
-                    dice.Add(r.Next(1, 6 + 1));
+                    dice.Add(_random.Next(1, 6 + 1));
                 }
                 dice.Sort();
                 var gamePlayerRound = new GamePlayerRound
@@ -338,9 +346,7 @@ namespace PerudoBot.GameService
 
             if (pips > 6) return false;
 
-            var previousBid = _game.CurrentRound
-                .Actions.OfType<Bid>()
-                .LastOrDefault();
+            var previousBid = GetPreviousBid();
 
             if (previousBid != null)
             {
@@ -435,7 +441,7 @@ namespace PerudoBot.GameService
                 PlayerWhoLostDice.NumberOfDice = 0;
                 PlayerWhoLostDice.Rank = _game.GamePlayers
                     .Where(x => x.PlayerId != PlayerWhoLostDice.PlayerId)
-                    .Count(x => x.NumberOfDice > 0) +1;
+                    .Count(x => x.NumberOfDice > 0) + 1;
             }
         }
 
@@ -491,7 +497,7 @@ namespace PerudoBot.GameService
             return _game.CurrentRound
                 .GamePlayerRounds
                 .Where(x => x.Dice != "")
-                .SelectMany(x => x.Dice.Split(",").Select(x => int.Parse(x)))
+                .SelectMany(x => x.Dice.ToIntegerDice())
                 .ToList();
         }
 
@@ -500,7 +506,7 @@ namespace PerudoBot.GameService
             var gamePlayer = _game.GamePlayers.SingleOrDefault(x => x.PlayerId == playerId);
             return gamePlayer.IsAutoLiar;
         }
-       
+
         public PlayerData GetPlayer(int playerId)
         {
             var gamePlayer = _game.GamePlayers.SingleOrDefault(x => x.PlayerId == playerId);
@@ -563,6 +569,120 @@ namespace PerudoBot.GameService
         public bool HasBots()
         {
             return _game.GamePlayers.Any(p => p.Player.DiscordPlayer.IsBot && p.NumberOfDice > 0);
+        }
+
+        public void SetPlayerDice(int playerId, int numDice)
+        {
+            var gamePlayer = _game.GamePlayers.Single(x => x.PlayerId == playerId);
+            gamePlayer.NumberOfDice = numDice;
+            _db.SaveChanges();
+        }
+
+        public void AddRandomDice(int playerId, int numDice, bool isMystery = false)
+        {
+            var diceToAdd = new List<int>();
+            for (int i = 0; i < numDice; i++)
+            {
+                diceToAdd.Add(_random.Next(1, 7));
+            }
+            AddDice(playerId, diceToAdd, isMystery);
+        }
+
+        public void AddDice(int playerId, List<int> dice, bool isMystery = false)
+        {
+            var gamePlayer = _game.GamePlayers.Single(x => x.PlayerId == playerId);
+
+            foreach (int die in dice)
+            {
+                AddDie(gamePlayer, die, isMystery);
+            }
+
+            _db.SaveChanges();
+        }
+
+        public List<int> RemoveDiceFromStart(int playerId, int numDice)
+        {
+            var gamePlayer = _game.GamePlayers.Single(x => x.PlayerId == playerId);
+            var removedDice = new List<int>();
+
+            for (int i = 0; i < numDice; i++)
+            {
+                var removedDie = RemoveDie(gamePlayer, 0);
+                removedDice.Add(removedDie);
+            }
+
+            _db.SaveChanges();
+
+            return removedDice;
+        }
+
+        public List<int> RemoveDiceFromEnd(int playerId, int numDice)
+        {
+            var gamePlayer = _game.GamePlayers.Single(x => x.PlayerId == playerId);
+            var currentDiceCount = gamePlayer.CurrentGamePlayerRound.Dice.ToIntegerDice().Count();
+            var removedDice = new List<int>();
+
+            for (int i = 0; i < numDice; i++)
+            {
+                var indexToRemove = currentDiceCount - (i + 1);
+                var removedDie = RemoveDie(gamePlayer, indexToRemove);
+                removedDice.Add(removedDie);
+            }
+
+            _db.SaveChanges();
+
+            return null;
+        }
+
+        public List<int> RemoveRandomDice(int playerId, int numDice)
+        {
+            var gamePlayer = _game.GamePlayers.Single(x => x.PlayerId == playerId);
+            var removedDice = new List<int>();
+
+            for (int i = 0; i < numDice; i++)
+            {
+                var indexToRemove = _random.Next(0, 99);
+                var removedDie = RemoveDie(gamePlayer, indexToRemove);
+                removedDice.Add(removedDie);
+            }
+
+            _db.SaveChanges();
+
+            return removedDice;
+        }
+
+        private void AddDie(GamePlayer gamePlayer, int face, bool isMystery = false)
+        {
+            var diceIntegers = gamePlayer.CurrentGamePlayerRound.Dice.ToIntegerDice();
+            var dieString = isMystery ? $"{face}?" : $"{face}";
+
+            if (diceIntegers.Count == 0)
+            {
+                gamePlayer.CurrentGamePlayerRound.Dice = dieString;
+                return;
+            }
+
+            int spotToInsert;
+            for (spotToInsert = 0; spotToInsert < diceIntegers.Count; spotToInsert++)
+            {
+                if (diceIntegers[spotToInsert] >= face) break;
+            }
+
+            var diceStrings = gamePlayer.CurrentGamePlayerRound.Dice.Split(',').ToList();
+            diceStrings.Insert(spotToInsert, dieString);
+
+            gamePlayer.CurrentGamePlayerRound.Dice = string.Join(",", diceStrings);
+        }
+
+        private int RemoveDie(GamePlayer gamePlayer, int index)
+        {
+            var diceIntegers = gamePlayer.CurrentGamePlayerRound.Dice.ToIntegerDice();
+            var diceStrings = gamePlayer.CurrentGamePlayerRound.Dice.Split(',').ToList();
+
+            diceStrings.RemoveAt(index % diceStrings.Count);
+            gamePlayer.CurrentGamePlayerRound.Dice = string.Join(",", diceStrings);
+
+            return diceIntegers[index % diceIntegers.Count];
         }
 
         public Bid GetPreviousBid()
