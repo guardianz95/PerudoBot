@@ -38,13 +38,15 @@ namespace PerudoBot.Modules
                 return;
             }
 
-            var existingBetsAmount = game
+            var playerHasBets = game
                 .GetCurrentRound()
                 .Actions.OfType<Bet>()
                 .Where(x => x.BettingPlayerId == bettingPlayer.Id)
-                .Sum(x => x.BetAmount);
+                .Any();
 
-            if (GetAvailablePoints(bettingPlayer.Id) < (betAmount + existingBetsAmount))
+            if (playerHasBets) return;
+
+            if (bettingPlayer.AvailablePoints < betAmount)
             {
                 await SendMessageAsync($"You don't have enough points to place this bet.");
                 return;
@@ -54,7 +56,7 @@ namespace PerudoBot.Modules
             game.BetOnLatestAction(bettingPlayer, betAmount, betType);
 
             var typeString = (betType == BetType.Liar) ? "a lie" : "exact";
-            await SendMessageAsync($":dollar: {bettingPlayer.Name} bets that `{targetAction.Quantity}` ˣ {targetAction.Pips.ToEmoji()} is {typeString}.");
+            await SendMessageAsync($":dollar: {bettingPlayer.Name} bets {betAmount} that `{targetAction.Quantity}` ˣ {targetAction.Pips.ToEmoji()} is {typeString}.");
         }
     }
 }

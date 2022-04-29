@@ -94,7 +94,7 @@ namespace PerudoBot.Modules
 
             var players = roundStatus.ActivePlayers
                             .OrderBy(x => x.TurnOrder)
-                            .Select(x => $"`{x.Dice.Count}` {x.Name}");
+                            .Select(x => $"`{x.Dice.Count}` {x.Name} `{x.AvailablePoints} pts`");
 
             var playerList = string.Join("\n", players);
 
