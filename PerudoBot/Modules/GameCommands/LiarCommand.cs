@@ -96,7 +96,8 @@ namespace PerudoBot.Modules
 
                 var winsOrLoses = betResult.IsSuccessful ? "wins" : "loses";
                 var odds = betResult.IsSuccessful ? $"*(x{betResult.BetOdds:0.0})* " : "";
-                await SendMessageAsync($":dollar: {betResult.BettingPlayer.Name} **{winsOrLoses} {pointsUsed + pointsGained}** {odds}points betting {betResult.BetType.ToLower()} on `{betResult.BetQuantity}` ˣ {betResult.BetPips.ToEmoji()}.");
+                var pointDisplay = betResult.IsSuccessful ? pointsGained : pointsUsed;
+                await SendMessageAsync($":dollar: {betResult.BettingPlayer.Name} **{winsOrLoses} {pointDisplay}** {odds}points betting {betResult.BetType.ToLower()} on `{betResult.BetQuantity}` ˣ {betResult.BetPips.ToEmoji()}.");
             }
         }
 
