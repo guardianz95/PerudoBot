@@ -174,6 +174,37 @@ namespace PerudoBot.Modules
             await SendOutDice(playersToUpates, isUpdate: true);
         }
 
+        [Command("greed")]
+        public async Task Greed()
+        {
+            SetGuildAndChannel();
+            var game = _gameHandler.GetActiveGame();
+            if (game == null) return;
+
+            var powerUpPlayerId = GetPlayerId(Context.User.Id, Context.Guild.Id);
+            var powerUpPlayer = game.GetPlayer(powerUpPlayerId);
+
+            var playerDiceCount = powerUpPlayer.NumberOfDice;
+
+            if (playerDiceCount >= 5 && game.GetMode() == GameMode.Reverse) return;
+            if (playerDiceCount != 5 && game.GetMode() != GameMode.Reverse) return;
+
+            if (!await AbleToUsePowerUp(game, powerUpPlayer, PowerUps.Greed)) return;
+
+            AddTotalPoints(powerUpPlayerId, PowerUps.GREED_POINTS);
+
+            if (game.GetMode() == GameMode.Reverse)
+            {
+                game.SetPlayerDice(powerUpPlayerId, playerDiceCount + 1);
+                await SendMessageAsync($":zap: **Greed**: {powerUpPlayer.Name} loses a life to get {PowerUps.GREED_POINTS} points.");
+            }
+            else
+            {
+                game.SetPlayerDice(powerUpPlayerId, 1);
+                await SendMessageAsync($":zap: **Greed**: {powerUpPlayer.Name} loses all their lives but one to get {PowerUps.GREED_POINTS} points.");
+            }
+        }
+
         [Command("touch")]
         public async Task Touch(params string[] bidText)
         {
