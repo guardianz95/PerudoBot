@@ -51,6 +51,7 @@ namespace Perudobot
 
         private async Task HandleInteraction(SocketInteraction interaction)
         {
+
             try
             {
                 // Create an execution context that matches the generic type parameter of your InteractionModuleBase<T> modules.

@@ -1,8 +1,11 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using PerudoBot.Database.Data;
 using System;
 using System.IO;
 using System.Threading;
@@ -28,13 +31,22 @@ namespace Perudobot
                 .AddJsonFile("appsettings.json", optional: true)
                 .Build();
 
+            //var memory = new MemoryCache(new MemoryCacheOptions());
             _services = new ServiceCollection()
+                .AddMemoryCache()
                 .AddSingleton(_configuration)
                 .AddSingleton(_socketConfig)
                 .AddSingleton<DiscordSocketClient>()
                 .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
                 .AddSingleton<InteractionHandler>()
+                .AddEntityFrameworkSqlite()
+                .AddDbContext<PerudoBotDbContext>(options =>
+                    options.UseLazyLoadingProxies()
+                        .UseSqlite(_configuration.GetConnectionString("PerudoBotDb")))
                 .BuildServiceProvider();
+
+            var db = _services.GetRequiredService<PerudoBotDbContext>();
+            db.Database.Migrate();
         }
 
         static void Main(string[] args)

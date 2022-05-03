@@ -54,7 +54,8 @@ namespace PerudoBot.GameService
             {
                 IsActive = _game.State == (int)GameState.InProgress,
                 Players = GetAllPlayers(),
-                RoundNumber = _game.CurrentRoundNumber
+                RoundNumber = _game.CurrentRoundNumber,
+                Bids = _game.CurrentRound.Actions.OfType<Bid>().ToList(),
             };
         }
 
@@ -241,21 +242,9 @@ namespace PerudoBot.GameService
 
                 _db.SaveChanges();
 
-                return new RoundStatus
-                {
-                    IsActive = false,
-                    Winner = activeGamePlayers.Single().ToPlayerObject(),
-                    Players = _game.GamePlayers.Select(x => new PlayerData
-                    {
-                        //IsBot = x.Player.IsBot,
-                        Name = x.Player.Name,
-                        Rank = x.Rank,
-                        NumberOfDice = x.NumberOfDice,
-                        PlayerId = x.Player.Id,
-                        PlayerMetadata = x.Player.Metadata.ToDictionary(x => x.Key, x => x.Value),
-                        GamePlayerMetadata = x.Metadata.ToDictionary(x => x.Key, x => x.Value)
-                    }).ToList()
-                };
+                var roundStatus = GetCurrentRoundStatus();
+                roundStatus.Winner = winner.ToPlayerObject();
+                return roundStatus;
             }
 
             // create new round
@@ -294,12 +283,7 @@ namespace PerudoBot.GameService
             //TODO: DO I have to do this every time??
             LoadActiveGame();
 
-            return new RoundStatus
-            {
-                IsActive = true,
-                Players = GetAllPlayers(),
-                RoundNumber = _game.CurrentRoundNumber
-            };
+            return GetCurrentRoundStatus();
         }
 
         public void OnEndOfRound()
@@ -330,7 +314,7 @@ namespace PerudoBot.GameService
             _db.SaveChanges();
         }
 
-        public void Bid(int playerId, int quantity, int pips)
+        public Bid Bid(int playerId, int quantity, int pips)
         {
             var previousBid = GetPreviousBid();
 
@@ -352,6 +336,8 @@ namespace PerudoBot.GameService
             _game.CurrentRound.Actions.Add(newBid);
 
             _db.SaveChanges();
+
+            return newBid;
         }
 
         public bool BidValidate(int playerId, int quantity, int pips)
