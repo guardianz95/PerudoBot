@@ -114,7 +114,7 @@ namespace PerudoBot.GameService
         public GameObject CreateGame(List<PlayerDto> playerDtos)
         {
             var game = GetActiveGame();
-            if (game != null) return game;
+            if (game != null) return null;
 
             game = new GameObject(_db, _channelId, _guildId);
 

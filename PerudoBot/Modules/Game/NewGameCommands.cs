@@ -44,36 +44,36 @@ namespace PerudoBot.Modules
             await RespondAsync(text: "Game terminated");
         }
 
-        //[UserCommand("Add user to the game")]
-        //public async Task AddPlayerCommand(SocketUser user)
-        //{
-        //    SetGuildAndChannel();
+        [UserCommand("Add user to the game")]
+        public async Task AddPlayerCommand(SocketUser user)
+        {
+            SetGuildAndChannel();
 
-        //    var game = _gameHandler.GetActiveGame();
-        //    if (game != null)
-        //    {
-        //        await RespondAsync("Game already in progress", ephemeral: true);
-        //        return;
-        //    }
+            var game = _gameHandler.GetActiveGame();
+            if (game != null)
+            {
+                await RespondAsync("Game already in progress", ephemeral: true);
+                return;
+            }
 
-        //    var setupMessageId = _gameHandler.GetSetupMessageId();
-        //    if (setupMessageId == 0)
-        //    {
-        //        await RespondAsync("No active game setup", ephemeral: true);
-        //        return;
-        //    }
+            var setupMessageId = _gameHandler.GetSetupMessageId();
+            if (setupMessageId == 0)
+            {
+                await RespondAsync("No active game setup", ephemeral: true);
+                return;
+            }
 
-        //    _gameHandler.AddPlayer(user.Id, user.Username, user.IsBot);
+            _gameHandler.AddPlayer(user.Id, user.Username, user.IsBot);
 
-        //    var setupMessage = (IUserMessage) await Context.Channel.GetMessageAsync(setupMessageId);
-        //    await setupMessage.ModifyAsync(x =>
-        //    {
-        //        x.Embed = CreateGameSetupEmbed();
-        //    });
+            var setupMessage = (IUserMessage)await Context.Channel.GetMessageAsync(setupMessageId);
+            await setupMessage.ModifyAsync(x =>
+            {
+                x.Embed = CreateGameSetupEmbed();
+            });
 
-        //    await DeferAsync();
-        //    await Context.Interaction.DeleteOriginalResponseAsync();
-        //}
+            await DeferAsync();
+            await Context.Interaction.DeleteOriginalResponseAsync();
+        }
 
         [ComponentInteraction("add_player")]
         public async Task AddPlayerHandler()

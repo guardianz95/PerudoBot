@@ -26,6 +26,7 @@ namespace PerudoBot.Modules
                 return;
             }
 
+            await DeferAsync();
             var game = _gameHandler.CreateGame(players);
 
             if (game == null)
@@ -34,9 +35,9 @@ namespace PerudoBot.Modules
                 return;
             }
 
-            game.ShufflePlayers();
-
             await RespondAsync("Starting the game!\nUse `/bid 2 2s` or `/liar` to play.");
+
+            game.ShufflePlayers();
             await StartNewRound(game);
         }
 
