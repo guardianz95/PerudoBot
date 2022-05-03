@@ -14,13 +14,14 @@ namespace PerudoBot.GameService.Constants
         public bool OutOfTurn { get; set; } = false;
         public int MinPlayers { get; set; } = 3;
         public int MinDice { get; set; } = 1;
-        public int UsesPerRound { get; set; } = 1;
-        public int UsesPerGame { get; set; } = 1;
+        public int UsesPerRound { get; set; } = 99;
+        public int UsesPerGame { get; set; } = 99;
     }
 
     public static class PowerUps
     {
         public static int TOTAL_USES_PER_ROUND = 1;
+        public static int GREED_POINTS = 50;
 
         public static PowerUp Lifetap = new PowerUp
         {
@@ -58,9 +59,16 @@ namespace PerudoBot.GameService.Constants
             Cost = 40
         };
 
+        public static PowerUp Greed = new PowerUp
+        {
+            Name = "Greed",
+            Description = $"Permanently lose a life to get {GREED_POINTS} points",
+            UsesPerGame = 5,
+        };
+
         public static List<PowerUp> PowerUpList = new List<PowerUp>
         {
-             Steal, Gamble, Touch, Lifetap, Reverse
+             Steal, Gamble, Touch, Lifetap, Reverse, Greed
         };
     }
 }

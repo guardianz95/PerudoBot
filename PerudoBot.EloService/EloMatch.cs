@@ -29,7 +29,7 @@ namespace PerudoBot.EloService.Elo
         public int GetOldEloRating(int playerId) =>
             _players.FirstOrDefault(p => p.PlayerId == playerId)?.EloPre ?? 1500;
 
-        public void CalculateElos(int initialK = 20)
+        public void CalculateElos(int initialK = 15)
         {
             int n = _players.Count;
             //float K = initialK / (float)(n - 1);

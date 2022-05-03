@@ -47,6 +47,7 @@ namespace PerudoBot.Modules
             if (roundStatus.IsActive == false)
             {
                 await SendMessageAsync($":trophy: {roundStatus.Winner.GetMention(_db)} is the winner with `{roundStatus.Winner.NumberOfDice}` dice remaining! :trophy:");
+                await SendMessageAsync(embed: CreateGameSummary(game));
                 return;
             }
 

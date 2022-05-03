@@ -33,8 +33,7 @@ namespace PerudoBot.Modules
 
             await RespondAsync($"{liarResult.PlayerWhoCalledLiar.Name} called **liar** on `{liarResult.BidQuantity}` ˣ {liarResult.BidPips.ToEmoji()}.");
 
-            // for dramatic effect
-            Thread.Sleep(2000);
+            Thread.Sleep(2000); // for dramatic effect
 
             var losesOrGains = liarResult.DiceLost > 0 ? "loses" : "gains";
             await Context.Channel.SendMessageAsync($"There was actually `{liarResult.ActualQuantity}` dice. :fire: {liarResult.PlayerWhoLostDice.Name} {losesOrGains} {Math.Abs(liarResult.DiceLost)} dice. :fire:");
@@ -117,6 +116,25 @@ namespace PerudoBot.Modules
                 .AddField("Players", $"{string.Join("\n", playerDice)}", inline: true)
                 .AddField("Dice", $"{string.Join("\n", listOfAllDiceCounts)}", inline: true)
                 .AddField("Totals", $"{string.Join("\n", totals)}", inline: true);
+
+            return builder.Build();
+        }
+
+        private Embed CreateGameSummary(GameObject game)
+        {
+            var eloResults = CalculateElo(game);
+            var eloChanges = new List<string>();
+            var gamePlayers = game.GetAllPlayers().OrderBy(x => x.Rank);
+
+            foreach (var gamePlayer in gamePlayers)
+            {
+                var eloResult = eloResults.Single(x => x.PlayerId == gamePlayer.PlayerId);
+                eloChanges.Add($"`{gamePlayer.Rank}` {gamePlayer.Name} `{eloResult.PreviousElo}` => `{eloResult.Elo}` ({eloResult.Elo - eloResult.PreviousElo})");
+            }
+
+            var builder = new EmbedBuilder()
+                .WithTitle($"Game Summary")
+                .AddField("Elo change", $"{string.Join("\n", eloChanges)}");
 
             return builder.Build();
         }
