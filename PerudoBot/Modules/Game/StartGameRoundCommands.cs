@@ -35,7 +35,12 @@ namespace PerudoBot.Modules
                 return;
             }
 
-            await RespondAsync("Starting the game!\nUse `/bid 2 2s` or `/liar` to play.");
+            await Context.Interaction.ModifyOriginalResponseAsync(x =>
+            {
+                x.Components = CreateGameSetupComponents(isDisabled: true);
+            });
+
+            await SendMessageAsync("Starting the game!\nUse `/bid 2 2s` or `/liar` to play.");
 
             game.ShufflePlayers();
             await StartNewRound(game);

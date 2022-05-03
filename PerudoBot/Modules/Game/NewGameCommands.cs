@@ -32,8 +32,7 @@ namespace PerudoBot.Modules
             await DeferAsync();
             await Context.Interaction.DeleteOriginalResponseAsync();
 
-            var message = await ReplyAsync(components: CreateGameSetupComponents(), embed: CreateGameSetupEmbed());
-            _gameHandler.SetSetupMessageId(message.Id);
+            await ReplyAsync(components: CreateGameSetupComponents(), embed: CreateGameSetupEmbed());
         }
 
         [SlashCommand("terminate", "Terminate existing game")]
@@ -63,16 +62,12 @@ namespace PerudoBot.Modules
                 return;
             }
 
-            _gameHandler.AddPlayer(user.Id, user.Username, user.IsBot);
-
-            var setupMessage = (IUserMessage)await Context.Channel.GetMessageAsync(setupMessageId);
-            await setupMessage.ModifyAsync(x =>
-            {
-                x.Embed = CreateGameSetupEmbed();
-            });
-
             await DeferAsync();
             await Context.Interaction.DeleteOriginalResponseAsync();
+
+            _gameHandler.AddPlayer(user.Id, user.Username, user.IsBot);
+
+            await ReplyAsync(components: CreateGameSetupComponents(), embed: CreateGameSetupEmbed());
         }
 
         [ComponentInteraction("add_player")]
@@ -91,10 +86,9 @@ namespace PerudoBot.Modules
             _gameHandler.AddPlayer(socketUser.Id, socketUser.Username, socketUser.IsBot);
 
             await DeferAsync();
-            await Context.Interaction.ModifyOriginalResponseAsync(x =>
-            {
-                x.Embed = CreateGameSetupEmbed();
-            });
+            await Context.Interaction.DeleteOriginalResponseAsync();
+
+            await ReplyAsync(components: CreateGameSetupComponents(), embed: CreateGameSetupEmbed());
         }
 
         [ComponentInteraction("select_game_mode")]
@@ -120,11 +114,12 @@ namespace PerudoBot.Modules
             });
         }
 
-        private MessageComponent CreateGameSetupComponents()
+        private MessageComponent CreateGameSetupComponents(bool isDisabled = false)
         {
             var menuBuilder = new SelectMenuBuilder()
                 .WithPlaceholder("Change game mode")
                 .WithCustomId("select_game_mode")
+                .WithDisabled(isDisabled)
                 .AddOption("Sudden Death", GameMode.SuddenDeath)
                 .AddOption("Reverse", GameMode.Reverse)
                 .AddOption("Variable", GameMode.Variable);
@@ -133,14 +128,16 @@ namespace PerudoBot.Modules
             {
                 Label = "Add",
                 CustomId = "add_player",
-                Style = ButtonStyle.Secondary
+                Style = ButtonStyle.Secondary,
+                IsDisabled = isDisabled
             };
 
             var startGameButton = new ButtonBuilder()
             {
                 Label = "Start",
                 CustomId = "start_game",
-                Style = ButtonStyle.Success
+                Style = ButtonStyle.Success,
+                IsDisabled = isDisabled
             };
 
             var components = new ComponentBuilder()
