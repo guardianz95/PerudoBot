@@ -20,9 +20,11 @@ namespace PerudoBot.Modules
             SetGuildAndChannel();
             var game = _gameHandler.GetActiveGame();
 
+            await RespondAsync($"Bidding...", ephemeral: true);
+
             if (game == null)
             {
-                await RespondAsync("No active game", ephemeral: true);
+                await FollowupAsync("No active game", ephemeral: true);
                 return;
             }
 
@@ -31,14 +33,14 @@ namespace PerudoBot.Modules
 
             if (Context.User.Id != userId)
             {
-                await RespondAsync("Not your turn", ephemeral: true);
+                await FollowupAsync("Not your turn", ephemeral: true);
                 return;
             }
 
             var bidText = bidParam.Split(" ");
             if (bidText.Length < 2)
             {
-                await RespondAsync("Invalid bid", ephemeral: true);
+                await FollowupAsync("Invalid bid", ephemeral: true);
                 return;
             }
 
@@ -49,14 +51,14 @@ namespace PerudoBot.Modules
 
             if (!isValid)
             {
-                await RespondAsync("Invalid bid", ephemeral: true);
+                await FollowupAsync("Invalid bid", ephemeral: true);
                 return;
             }
 
             game.Bid(currentPlayer.PlayerId, quantity, pips);
             var nextPlayer = game.GetCurrentPlayer();
 
-            await RespondAsync($"{currentPlayer.Name} bids `{quantity}` ˣ { pips.ToEmoji() }. { nextPlayer.GetMention(_db)} is up.");
+            await FollowupAsync($"{currentPlayer.Name} bids `{quantity}` ˣ { pips.ToEmoji() }. { nextPlayer.GetMention(_db)} is up.");
         }
     }
 }
