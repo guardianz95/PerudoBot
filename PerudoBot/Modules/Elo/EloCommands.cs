@@ -1,34 +1,29 @@
-﻿using Discord;
-using Discord.Commands;
+﻿using Discord.Interactions;
 using PerudoBot.EloService;
-using PerudoBot.Extensions;
 using PerudoBot.GameService;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace PerudoBot.Modules
 {
-    public partial class Commands : ModuleBase<SocketCommandContext>
+    public partial class Commands : InteractionModuleBase<SocketInteractionContext>
     {
+        public enum GameModeEnum
+        {
+            SuddenDeath,
+            Reverse,
+            Variable
+        }
 
-        [Command("elo")]
-        public async Task Elo(params string[] options)
+        [SlashCommand("elo", "Check elo standings")]
+        public async Task Elo(GameModeEnum gameModeParam)
         {
             var gameMode = GameMode.Reverse;
-
-            var suddendeathList = new List<string> { "suddendeath", "sd", "sudden", "death" };
-            if (suddendeathList.Contains(options.FirstOrDefault()?.ToLower()))
-            {
-                gameMode = GameMode.SuddenDeath;
-            }
-
-            var reverseList = new List<string> { "variable", "v" };
-            if (reverseList.Contains(options.FirstOrDefault()?.ToLower()))
-            {
-                gameMode = GameMode.Variable;
-            }
+            if (gameModeParam == GameModeEnum.SuddenDeath) gameMode = GameMode.SuddenDeath;
+            if (gameModeParam == GameModeEnum.Variable) gameMode = GameMode.Variable;
 
             var eloHandler = new EloHandler(_db, Context.Guild.Id, gameMode);
             var eloSeason = eloHandler.GetCurrentEloSeason();
@@ -44,10 +39,11 @@ namespace PerudoBot.Modules
             {
                 message += $"\n{playerElo.Player.Name}: {playerElo.Rating}";
             }
-            await SendMessageAsync(message);
+
+            await RespondAsync(message);
         }
 
-        private async Task CalculateEloAsync(GameObject game)
+        private List<PlayerElo> CalculateElo(GameObject game)
         {
             var gameMode = game.GetGameMode();
             var eloHandler = new EloHandler(_db, Context.Guild.Id, gameMode);
@@ -58,16 +54,10 @@ namespace PerudoBot.Modules
             {
                 eloHandler.AddPlayer(gamePlayer.PlayerId, gamePlayer.Rank);
             }
+
             eloHandler.CalculateAndSaveElo();
 
-            var eloResults = eloHandler.GetEloResults();
-
-            foreach (var gamePlayer in gamePlayers)
-            {
-                var eloResult = eloResults.Single(x => x.PlayerId == gamePlayer.PlayerId);
-                await SendMessageAsync($"`{gamePlayer.Rank}` {gamePlayer.Name} `{eloResult.PreviousElo}` => `{eloResult.Elo}` ({eloResult.Elo - eloResult.PreviousElo})");
-                Thread.Sleep(500); // For suspense! 
-            }
+            return eloHandler.GetEloResults();
         }
     }
 }

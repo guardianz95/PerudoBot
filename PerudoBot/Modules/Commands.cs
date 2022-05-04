@@ -1,21 +1,23 @@
 ﻿using Discord;
-using Discord.Commands;
-using System.Threading.Tasks;
-using System;
-using PerudoBot.Database.Data;
-using PerudoBot.GameService;
-using System.IO;
+using Discord.Interactions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Perudobot;
+using PerudoBot.Database.Data;
+using PerudoBot.GameService;
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace PerudoBot.Modules
 {
-    public partial class Commands : ModuleBase<SocketCommandContext>
+    public partial class Commands : InteractionModuleBase<SocketInteractionContext>
     {
-        private readonly IMemoryCache _cache;
         private readonly PerudoBotDbContext _db;
-        //private readonly GameObject _gameObject;
+        private readonly IMemoryCache _cache;
+
         private readonly GameHandler _gameHandler;
 
         public Commands(IServiceProvider serviceProvider)
@@ -24,26 +26,6 @@ namespace PerudoBot.Modules
             _db = serviceProvider.GetRequiredService<PerudoBotDbContext>();
 
             _gameHandler = new GameHandler(_db, _cache);
-        }
-        private async Task<IUserMessage> SendMessageAsync(string message, bool isTTS = false)
-        {
-            if (string.IsNullOrEmpty(message)) return null;
-
-            var requestOptions = new RequestOptions()
-            { RetryMode = RetryMode.RetryRatelimit };
-            return await base.ReplyAsync(message, options: requestOptions, isTTS: isTTS);
-        }
-        private async Task SendTempMessageAsync(string message, bool isTTS = false)
-        {
-            var requestOptions = new RequestOptions()
-            { RetryMode = RetryMode.RetryRatelimit };
-            var sentMessage = await base.ReplyAsync(message, options: requestOptions, isTTS: isTTS);
-            try
-            {
-                _ = sentMessage.DeleteAsync();
-            }
-            catch
-            { }
         }
 
         private void SetGuildAndChannel()
@@ -67,67 +49,10 @@ namespace PerudoBot.Modules
                 .Id;
         }
 
-        [Command("updateavatar")]
-        public async Task UpdateAvatarCommand(params string[] options)
+        private async Task<IUserMessage> SendMessageAsync(string message = null, Embed embed = null, MessageComponent components = null)
         {
-            //Is this causing hang-ups? Uncomment when bot it stable
-            //await UpdateAvatar($"{options.First()}.png");
-        }
-
-        private async Task UpdateAvatar(string avatarName)
-        {
-            //try
-            //{
-            //    var fileStream = new FileStream(Directory.GetCurrentDirectory() + $"/Avatars/{avatarName}", FileMode.Open);
-            //    var image = new Image(fileStream);
-            //    await Context.Client.CurrentUser.ModifyAsync(u => u.Avatar = image);
-            //}
-            //catch { }
-        }
-
-        [Command("ping")]
-        [Alias("p")]
-        public async Task Ping()
-        {
-            await SendMessageAsync("Pong");
-        }
-
-
-        [Command("set")]
-        public async Task Set(string param)
-        {
-            _cache.Set("test", param); // cache testing
-        }
-
-        [Command("get")]
-        public async Task Get()
-        {
-            await SendMessageAsync((string)_cache.Get("test")); // cache testing
-        }
-
-        [Command("crash")]
-        public async Task Crash()
-        {
-            throw new NullReferenceException("Error message here", new Exception("Inner exception message here"));
-        }
-
-        private void DeleteCommandFromDiscord(ulong? messageId = null)
-        {
-            try
-            {
-                if (messageId != null)
-                {
-                    _ = Task.Run(() => Context.Channel.DeleteMessageAsync(messageId.Value));
-                }
-                else
-                {
-                    _ = Task.Run(() => Context.Message.DeleteAsync());
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
+            var requestOptions = new RequestOptions() { RetryMode = RetryMode.RetryRatelimit };
+            return await Context.Channel.SendMessageAsync(message, options: requestOptions, embed: embed, components: components);
         }
     }
 }

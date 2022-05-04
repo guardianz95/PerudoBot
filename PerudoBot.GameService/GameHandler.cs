@@ -27,11 +27,10 @@ namespace PerudoBot.GameService
             _cache = cache;
         }
 
-        public bool AddPlayer(ulong userId, ulong guildId, string name, bool isBot)
+        public bool AddPlayer(ulong userId, string name, bool isBot)
         {
             var game = GetActiveGame();
             if (game != null) return false;
-
 
             var discordPlayer = CreateAndGetDiscordPlayer(userId, name, isBot);
 
@@ -47,7 +46,7 @@ namespace PerudoBot.GameService
             return true;
         }
 
-        private DiscordPlayer CreateAndGetDiscordPlayer(ulong userId, string name, bool isBot)
+        public DiscordPlayer CreateAndGetDiscordPlayer(ulong userId, string name, bool isBot)
         {
             var discordPlayer = _db.DiscordPlayers
                 .Include(x => x.Player)
@@ -77,6 +76,18 @@ namespace PerudoBot.GameService
             return discordPlayer;
         }
 
+        public void SetSetupMessageId(ulong messageId)
+        {
+            _cache.Set($"setupmessageid{_channelId}", messageId);
+        }
+
+        public ulong GetSetupMessageId()
+        {
+            var messageId = _cache.Get($"setupmessageid{_channelId}");
+            if (messageId == null) return 0;
+            return (ulong) messageId;
+        }
+
         public void ClearPlayerList()
         {
             _cache.Remove($"players{_channelId}");
@@ -100,7 +111,7 @@ namespace PerudoBot.GameService
             _cache.Set($"gamemode{_channelId}", "reverse");
         }
 
-        public GameObject CreateGame()
+        public GameObject CreateGame(List<PlayerDto> playerDtos)
         {
             var game = GetActiveGame();
             if (game != null) return null;
@@ -115,7 +126,6 @@ namespace PerudoBot.GameService
             if (gamemode == "variable") game.SetModeVariable();
             if (gamemode == "reverse") game.SetModeReverse();
 
-            var playerDtos = GetSetupPlayerIds();
             foreach (var playerDto in playerDtos)
             {
                 game.AddPlayer(playerDto.PlayerId, playerDto.Name);
@@ -149,7 +159,8 @@ namespace PerudoBot.GameService
             var players = _db.Players.Where(x => playerIds.Contains(x.Id))
                 .Select(x => new PlayerDto { 
                     PlayerId = x.Id, 
-                    Name = x.Name 
+                    Name = x.Name,
+                    AvailablePoints = x.AvailablePoints
                 })
                 .ToList();
 
@@ -183,5 +194,6 @@ namespace PerudoBot.GameService
     {
         public int PlayerId { get; set; }
         public string Name { get; set; }
+        public int AvailablePoints { get; set; }
     }
 }

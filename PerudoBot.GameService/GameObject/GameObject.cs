@@ -2,6 +2,7 @@
 using PerudoBot.Database.Data;
 using PerudoBot.Extensions;
 using PerudoBot.GameService.Extensions;
+using PerudoBot.GameService.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,7 +54,8 @@ namespace PerudoBot.GameService
             {
                 IsActive = _game.State == (int)GameState.InProgress,
                 Players = GetAllPlayers(),
-                RoundNumber = _game.CurrentRoundNumber
+                RoundNumber = _game.CurrentRoundNumber,
+                Bids = _game.CurrentRound.Actions.OfType<Bid>().ToList(),
             };
         }
 
@@ -210,6 +212,13 @@ namespace PerudoBot.GameService
 
         public RoundStatus StartNewRound()
         {
+            if (_game.Rounds.Count > 0)
+            {
+                OnEndOfRound();
+            }
+
+            OnStartOfRound();
+
             if (_game.GamePlayerTurnId == 0)
             {
                 var firstPlayer = _game.GamePlayers.OrderBy(x => x.TurnOrder).First();
@@ -232,23 +241,10 @@ namespace PerudoBot.GameService
                 _game.State = (int)GameState.Finished;
 
                 _db.SaveChanges();
-                OnEndOfRound();
 
-                return new RoundStatus
-                {
-                    IsActive = false,
-                    Winner = activeGamePlayers.Single().ToPlayerObject(),
-                    Players = _game.GamePlayers.Select(x => new PlayerData
-                    {
-                        //IsBot = x.Player.IsBot,
-                        Name = x.Player.Name,
-                        Rank = x.Rank,
-                        NumberOfDice = x.NumberOfDice,
-                        PlayerId = x.Player.Id,
-                        PlayerMetadata = x.Player.Metadata.ToDictionary(x => x.Key, x => x.Value),
-                        GamePlayerMetadata = x.Metadata.ToDictionary(x => x.Key, x => x.Value)
-                    }).ToList()
-                };
+                var roundStatus = GetCurrentRoundStatus();
+                roundStatus.Winner = winner.ToPlayerObject();
+                return roundStatus;
             }
 
             // create new round
@@ -287,17 +283,17 @@ namespace PerudoBot.GameService
             //TODO: DO I have to do this every time??
             LoadActiveGame();
 
-            return new RoundStatus
-            {
-                IsActive = true,
-                Players = GetAllPlayers(),
-                RoundNumber = _game.CurrentRoundNumber
-            };
+            return GetCurrentRoundStatus();
         }
 
         public void OnEndOfRound()
         {
             Console.WriteLine("End Of Round");
+        }
+
+        public void OnStartOfRound()
+        {
+            Console.WriteLine("Start Of Round");
         }
 
         public void Terminate()
@@ -314,9 +310,11 @@ namespace PerudoBot.GameService
                 gamePlayer.TurnOrder = turnOrder;
                 turnOrder += 1;
             }
+
+            _db.SaveChanges();
         }
 
-        public void Bid(int playerId, int quantity, int pips)
+        public Bid Bid(int playerId, int quantity, int pips)
         {
             var previousBid = GetPreviousBid();
 
@@ -338,6 +336,8 @@ namespace PerudoBot.GameService
             _game.CurrentRound.Actions.Add(newBid);
 
             _db.SaveChanges();
+
+            return newBid;
         }
 
         public bool BidValidate(int playerId, int quantity, int pips)
@@ -370,9 +370,13 @@ namespace PerudoBot.GameService
             return true;
         }
 
-        public LiarResult Liar(int playerId)
+        public RoundResult Liar(int playerId)
         {
-            //if (_game.CurrentGamePlayer.PlayerId != playerId) return null;
+            var roundResult = new RoundResult
+            {
+                BetResults = ResolveBets()
+            };
+
             var player = _game.GamePlayers.Single(x => x.PlayerId == playerId);
 
             if (player.NumberOfDice == 0) return null;
@@ -385,7 +389,8 @@ namespace PerudoBot.GameService
                 ParentAction = _game.CurrentRound.LatestAction,
             };
 
-            if (_game.CurrentRound.LatestAction is not Bid previousBid) return null; //throw error?
+            var previousBid = GetPreviousBid();
+            if (previousBid == null) return null;
 
             var PlayerWhoBidLast = previousBid.GamePlayer;
             var PlayerWhoCalledLiar = player;
@@ -396,6 +401,7 @@ namespace PerudoBot.GameService
                 BidPips = previousBid.Pips
             };
 
+            roundResult.LiarResult = liarResult;
 
             var actualQuantity = GetNumberOfDiceMatchingBid(previousBid.Pips);
             liarResult.ActualQuantity = actualQuantity;
@@ -429,8 +435,7 @@ namespace PerudoBot.GameService
             liarResult.PlayerWhoCalledLiar = PlayerWhoCalledLiar.ToPlayerObject();
             liarResult.PlayerWhoLostDice = PlayerWhoLostDice.ToPlayerObject();
 
-
-            return liarResult;
+            return roundResult;
         }
 
         private void DecrementDice(GamePlayer PlayerWhoLostDice, int diceLost)
@@ -690,6 +695,76 @@ namespace PerudoBot.GameService
             return _game.CurrentRound
                 .Actions.OfType<Bid>()
                 .LastOrDefault();
+        }
+
+        private List<BetResult> ResolveBets()
+        {
+            var gameDice = GetAllDice();
+
+            var bets = _game.CurrentRound.Actions.OfType<Bet>();
+            var betResults = new List<BetResult>();
+
+            foreach (var bet in bets)
+            {
+                var targetAction = (Bid) bet.TargetAction;
+                var targetPips = targetAction.Pips;
+                var targetQuantity = targetAction.Quantity;
+
+                var actualQuantity = gameDice.Where(x => x == targetPips || x == 1).Count();
+
+                var isSuccessful = false;
+                var betOdds = 0.0;
+
+                if (bet.BetType == BetType.Liar)
+                {
+                    isSuccessful = actualQuantity < targetQuantity;
+                    betOdds = 1.0 / (1 - BetHelpers.BidChanceOrMore(targetPips, targetQuantity, gameDice.Count));
+                }
+
+                if (bet.BetType == BetType.Exact)
+                {
+                    isSuccessful = actualQuantity == targetQuantity;
+                    betOdds = 1.0 / BetHelpers.BidChance(targetPips, targetQuantity, gameDice.Count); 
+                }
+
+                betOdds = Math.Min(betOdds, 4.0);
+                betOdds = Math.Max(betOdds, 1.5);
+
+                var betResult = new BetResult
+                {
+                    BettingPlayer = bet.BettingPlayer,
+                    BetAmount = bet.BetAmount,
+                    BetQuantity = targetQuantity,
+                    BetPips = targetPips,
+                    BetType = bet.BetType,
+                    IsSuccessful = isSuccessful,
+                    BetOdds = betOdds
+                };
+
+                betResults.Add(betResult);
+            }
+
+            _db.SaveChanges();
+
+            return betResults;
+        }
+
+        public void BetOnLatestAction(Player bettingPlayer, int betAmount, string betType)
+        {
+            var latestAction = GetPreviousBid();
+
+            var bet = new Bet
+            {
+                BettingPlayer = bettingPlayer,
+                ParentAction = latestAction,
+                TargetAction = latestAction,
+                Round = _game.CurrentRound,
+                BetAmount = betAmount,
+                BetType = betType
+            };
+
+            _game.CurrentRound.Actions.Add(bet);
+            _db.SaveChanges();
         }
 
         public string GetMetadata(string key)

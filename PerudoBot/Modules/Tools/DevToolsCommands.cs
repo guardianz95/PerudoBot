@@ -1,57 +1,61 @@
-﻿using Discord;
-using Discord.Commands;
-using PerudoBot.Extensions;
+﻿using Discord.Interactions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace PerudoBot.Modules
 {
-    public partial class Commands : ModuleBase<SocketCommandContext>
+    public partial class Commands : InteractionModuleBase<SocketInteractionContext>
     {
-        [Command("resenddice")]
+        [SlashCommand("resenddice", "Resend dice")]
         public async Task ResendDice()
         {
             _gameHandler.SetChannel(Context.Channel.Id);
             var game = _gameHandler.GetActiveGame();
+
+            if (game == null)
+            {
+                await RespondAsync("No active game", ephemeral: true);
+                return;
+            }
+
             var playerDice = game.GetAllPlayers();
             await SendOutDice(playerDice);
+            await RespondAsync("Re-sent game dice");
         }
 
-        [Command("resetround")]
-        public async Task ResetRound()
+        [SlashCommand("restartround", "Restart round")]
+        public async Task RestartRound()
         {
             SetGuildAndChannel();
-            var gameObject = _gameHandler.GetActiveGame();
+            var game = _gameHandler.GetActiveGame();
 
-            if (gameObject != null)
+            if (game == null)
             {
-                await SendRoundSummary();
-                await StartNewRound(gameObject);
+                await RespondAsync("No active game", ephemeral: true);
+                return;
             }
-            else
-            {
-                await SendMessageAsync("No active game");
-            }
+
+            await RespondAsync("Restarting round", embed: CreateRoundSummary(game));
+            await StartNewRound(game);
         }
 
-        [Command("status")]
+        [SlashCommand("status", "Current game status")]
         public async Task Status()
         {
             SetGuildAndChannel();
-            var gameObject = _gameHandler.GetActiveGame();
-            if (gameObject != null)
+            var game = _gameHandler.GetActiveGame();
+
+            if (game == null)
             {
-                var roundStatus = gameObject.GetCurrentRoundStatus();
-                await SendCurrentRoundStatus(roundStatus);
+                await RespondAsync("No active game", ephemeral: true);
+                return;
             }
-            else
-            {
-                await SendMessageAsync("No active game");
-            }
+
+            var roundStatus = game.GetCurrentRoundStatus();
+            await RespondAsync(embed: CreateRoundStatusEmbed(roundStatus), ephemeral: true);
         }
     }
-
-
 }
