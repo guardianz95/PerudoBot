@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PerudoBot.Database.Data;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,6 +10,6 @@ namespace PerudoBot.GameService
     public class RoundResult
     {
         public LiarResult LiarResult { get; set; }
-        public List<BetResult> BetResults { get; set; }
+        public List<Bet> Bets { get; set; }
     }
 }

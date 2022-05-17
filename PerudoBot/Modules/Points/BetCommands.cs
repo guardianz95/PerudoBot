@@ -32,6 +32,12 @@ namespace PerudoBot.Modules
                 .CreateAndGetDiscordPlayer(Context.User.Id, Context.User.Username, Context.User.IsBot)
                 .Player;
 
+            if (bettingPlayer.Points < 1)
+            {
+                await SendMessageAsync($"You don't have enough points to place this bet.");
+                return;
+            };
+
             if (targetAction.GamePlayer.PlayerId == bettingPlayer.Id)
             {
                 await SendMessageAsync($"You can't bet on your own bid.");
@@ -46,13 +52,11 @@ namespace PerudoBot.Modules
 
             if (playerHasBets) return;
 
-            if (bettingPlayer.AvailablePoints < betAmount)
-            {
-                await SendMessageAsync($"You don't have enough points to place this bet.");
-                return;
-            };
+            if (bettingPlayer.Points < betAmount) betAmount = bettingPlayer.Points;
 
             DeleteCommandFromDiscord();
+
+            AddPoints(bettingPlayer.Id, -betAmount);
             game.BetOnLatestAction(bettingPlayer, betAmount, betType);
 
             var typeString = (betType == BetType.Liar) ? "a lie" : "exact";

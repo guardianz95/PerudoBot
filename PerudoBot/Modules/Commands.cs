@@ -8,6 +8,9 @@ using System.IO;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
+using Newtonsoft.Json;
+using PerudoBot.GameService.Extensions;
+using PerudoBot.Extensions;
 
 namespace PerudoBot.Modules
 {
@@ -109,6 +112,38 @@ namespace PerudoBot.Modules
         public async Task Crash()
         {
             throw new NullReferenceException("Error message here", new Exception("Inner exception message here"));
+        }
+
+        public async Task UpdateBotUpdateMessage(GameObject game, Bid currentBid)
+        {
+            var botMessage = "";
+            var nextPlayer = game.GetCurrentPlayer();
+
+            // Current bid is null on the first move of the round
+            if (currentBid == null)
+            {
+                botMessage = JsonConvert.SerializeObject(new
+                {
+                    nextPlayer = nextPlayer.GetDiscordId(_db),
+                    gameDice = game.GetAllDice().Count,
+                    round = game.GetCurrentRoundNumber()
+                });
+            }
+            else
+            {
+                var currentPlayer = currentBid.GamePlayer.ToPlayerObject();
+                botMessage = JsonConvert.SerializeObject(new
+                {
+                    nextPlayer = nextPlayer.GetDiscordId(_db),
+                    round = game.GetCurrentRoundNumber(),
+                    action = BidToActionIndex(currentBid.Quantity, currentBid.Pips),
+                    gameDice = game.GetAllDice().Count,
+                    playerDice = currentPlayer.Dice.Count
+                });
+            }
+
+            await Context.Message.Channel.ModifyMessageAsync(ulong.Parse(game.GetMetadata("BotUpdateMessageId")),
+                    x => x.Content = $"||`{botMessage}`||");
         }
 
         private void DeleteCommandFromDiscord(ulong? messageId = null)

@@ -2,15 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PerudoBot.Database.Data;
 
 namespace PerudoBot.Database.Sqlite.Migrations
 {
     [DbContext(typeof(PerudoBotDbContext))]
-    partial class PerudoBotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220517021049_MergeInUsedPoints")]
+    partial class MergeInUsedPoints
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -232,6 +234,9 @@ namespace PerudoBot.Database.Sqlite.Migrations
                     b.Property<int>("Points")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("UsedPoints")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.ToTable("Players");
@@ -299,16 +304,13 @@ namespace PerudoBot.Database.Sqlite.Migrations
                     b.Property<int>("BetAmount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double>("BetOdds")
-                        .HasColumnType("REAL");
-
                     b.Property<string>("BetType")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("BettingPlayerId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsSuccessful")
+                    b.Property<bool?>("IsSuccessful")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("TargetActionId")

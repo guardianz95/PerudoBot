@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Commands;
+using PerudoBot.Database.Data;
 using PerudoBot.Extensions;
 using PerudoBot.GameService;
 using System;
@@ -78,26 +79,25 @@ namespace PerudoBot.Modules
                 }
             }
 
-            await SendBetResuls(roundResult.BetResults);
+            await SendBetResuls(roundResult.Bets);
             await SendRoundSummary();
 
             await StartNewRound(game);
         }
 
-        private async Task SendBetResuls(List<BetResult> betResults)
+        private async Task SendBetResuls(List<Bet> bets)
         {
-            foreach (var betResult in betResults)
+            foreach (var bet in bets)
             {
-                var pointsUsed = betResult.BetAmount;
-                var pointsGained = betResult.IsSuccessful ? (int) Math.Round(pointsUsed * betResult.BetOdds) : 0;
+                var adustedOdds = Math.Max(Math.Min(bet.BetOdds, 4.0), 1.5);
 
-                AddUsedPoints(betResult.BettingPlayer.Id, pointsUsed);
-                AddTotalPoints(betResult.BettingPlayer.Id, pointsGained);
+                var pointsGained = (int)Math.Round(bet.BetAmount * adustedOdds);
+                if (bet.IsSuccessful) AddPoints(bet.BettingPlayer.Id, pointsGained);
 
-                var winsOrLoses = betResult.IsSuccessful ? "wins" : "loses";
-                var odds = betResult.IsSuccessful ? $"*(x{betResult.BetOdds:0.0})* " : "";
-                var pointDisplay = betResult.IsSuccessful ? pointsGained : pointsUsed;
-                await SendMessageAsync($":dollar: {betResult.BettingPlayer.Name} **{winsOrLoses} {pointDisplay}** {odds}points betting {betResult.BetType.ToLower()} on `{betResult.BetQuantity}` ˣ {betResult.BetPips.ToEmoji()}.");
+                var winsOrLoses = bet.IsSuccessful ? "wins" : "loses";
+                var odds = bet.IsSuccessful ? $"*(x{adustedOdds:0.0})* " : "";
+                var pointDisplay = bet.IsSuccessful ? pointsGained : bet.BetAmount;
+                await SendMessageAsync($":dollar: {bet.BettingPlayer.Name} **{winsOrLoses} {pointDisplay}** {odds}points betting {bet.BetType.ToLower()} on `{bet.BetQuantity}` ˣ {bet.BetPips.ToEmoji()}.");
             }
         }
 

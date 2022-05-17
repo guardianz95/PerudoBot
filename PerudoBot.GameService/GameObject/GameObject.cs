@@ -330,7 +330,7 @@ namespace PerudoBot.GameService
             _db.SaveChanges();
         }
 
-        public void Bid(int playerId, int quantity, int pips)
+        public Bid Bid(int playerId, int quantity, int pips)
         {
             var previousBid = GetPreviousBid();
 
@@ -352,6 +352,17 @@ namespace PerudoBot.GameService
             _game.CurrentRound.Actions.Add(newBid);
 
             _db.SaveChanges();
+
+            return newBid;
+        }
+
+        public PlayerData SkipTurn()
+        {
+            var nextPlayer = GetNextActiveGamePlayerId(_game.GamePlayerTurnId);
+            _game.GamePlayerTurnId = nextPlayer;
+            _db.SaveChanges();
+
+            return _game.CurrentGamePlayer.ToPlayerObject();
         }
 
         public bool BidValidate(int playerId, int quantity, int pips)
@@ -386,11 +397,6 @@ namespace PerudoBot.GameService
 
         public RoundResult Liar(int playerId)
         {
-            var roundResult = new RoundResult
-            {
-                BetResults = ResolveBets()
-            };
-
             var player = _game.GamePlayers.Single(x => x.PlayerId == playerId);
 
             if (player.NumberOfDice == 0) return null;
@@ -415,7 +421,11 @@ namespace PerudoBot.GameService
                 BidPips = previousBid.Pips
             };
 
-            roundResult.LiarResult = liarResult;
+            var roundResult = new RoundResult
+            {
+                Bets = _game.CurrentRound.Actions.OfType<Bet>().ToList(),
+                LiarResult = liarResult
+            };
 
             var actualQuantity = GetNumberOfDiceMatchingBid(previousBid.Pips);
             liarResult.ActualQuantity = actualQuantity;
@@ -711,61 +721,15 @@ namespace PerudoBot.GameService
                 .LastOrDefault();
         }
 
-        private List<BetResult> ResolveBets()
-        {
-            var gameDice = GetAllDice();
-
-            var bets = _game.CurrentRound.Actions.OfType<Bet>();
-            var betResults = new List<BetResult>();
-
-            foreach (var bet in bets)
-            {
-                var targetAction = (Bid) bet.TargetAction;
-                var targetPips = targetAction.Pips;
-                var targetQuantity = targetAction.Quantity;
-
-                var actualQuantity = gameDice.Where(x => x == targetPips || x == 1).Count();
-
-                var isSuccessful = false;
-                var betOdds = 0.0;
-
-                if (bet.BetType == BetType.Liar)
-                {
-                    isSuccessful = actualQuantity < targetQuantity;
-                    betOdds = 1.0 / (1 - BetHelpers.BidChanceOrMore(targetPips, targetQuantity, gameDice.Count));
-                }
-
-                if (bet.BetType == BetType.Exact)
-                {
-                    isSuccessful = actualQuantity == targetQuantity;
-                    betOdds = 1.0 / BetHelpers.BidChance(targetPips, targetQuantity, gameDice.Count); 
-                }
-
-                betOdds = Math.Min(betOdds, 4.0);
-                betOdds = Math.Max(betOdds, 1.5);
-
-                var betResult = new BetResult
-                {
-                    BettingPlayer = bet.BettingPlayer,
-                    BetAmount = bet.BetAmount,
-                    BetQuantity = targetQuantity,
-                    BetPips = targetPips,
-                    BetType = bet.BetType,
-                    IsSuccessful = isSuccessful,
-                    BetOdds = betOdds
-                };
-
-                betResults.Add(betResult);
-            }
-
-            _db.SaveChanges();
-
-            return betResults;
-        }
-
         public void BetOnLatestAction(Player bettingPlayer, int betAmount, string betType)
         {
             var latestAction = GetPreviousBid();
+            var gameDice = GetAllDice();
+
+            var targetPips = latestAction.Pips;
+            var targetQuantity = latestAction.Quantity;
+
+            var actualQuantity = gameDice.Where(x => x == targetPips || x == 1).Count();
 
             var bet = new Bet
             {
@@ -776,6 +740,18 @@ namespace PerudoBot.GameService
                 BetAmount = betAmount,
                 BetType = betType
             };
+
+            if (bet.BetType == BetType.Liar)
+            {
+                bet.IsSuccessful = actualQuantity < targetQuantity;
+                bet.BetOdds = 1.0 / (1 - BetHelpers.BidChanceOrMore(targetPips, targetQuantity, gameDice.Count));
+            }
+
+            if (bet.BetType == BetType.Exact)
+            {
+                bet.IsSuccessful = actualQuantity == targetQuantity;
+                bet.BetOdds = 1.0 / BetHelpers.BidChance(targetPips, targetQuantity, gameDice.Count);
+            }
 
             _game.CurrentRound.Actions.Add(bet);
             _db.SaveChanges();

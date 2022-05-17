@@ -23,12 +23,11 @@ namespace PerudoBot.GameService.Constants
         public static int TOTAL_USES_PER_ROUND = 1;
         public static int GREED_POINTS = 50;
 
-        public static PowerUp Lifetap = new PowerUp
+        public static PowerUp Skip = new PowerUp
         {
-            Name = "Lifetap",
-            Description = "Permanently lose a life to get 3 dice this turn",
-            UsesPerGame = 5,
-            Cost = 10
+            Name = "Skip",
+            Description = "Permanently lose a life to skip your turn",
+            Cost = 30
         };
 
         public static PowerUp Touch = new PowerUp
@@ -42,33 +41,33 @@ namespace PerudoBot.GameService.Constants
         {
             Name = "Reverse",
             Description = "Reverse player order, takes effect immediately",
-            Cost = 20
+            Cost = 10
         };
 
         public static PowerUp Steal = new PowerUp
         {
             Name = "Steal",
             Description = "Steal up to 3 dice from target player, new dice are mystery",
-            Cost = 40
+            Cost = 20
         };
 
         public static PowerUp Gamble = new PowerUp
         {
             Name = "Gamble",
-            Description = "Transform your dice unpredictably, use `!odds` to find out more",
-            Cost = 40
+            Description = "Reroll your dice with a small chance for a lucky outcome",
+            Cost = 30
         };
 
         public static PowerUp Greed = new PowerUp
         {
             Name = "Greed",
-            Description = $"Permanently lose a life to get {GREED_POINTS} points",
-            UsesPerGame = 5,
+            Description = $"Permanently lose a life to get {GREED_POINTS} points once per game",
+            UsesPerGame = 1
         };
 
         public static List<PowerUp> PowerUpList = new List<PowerUp>
         {
-             Steal, Gamble, Touch, Lifetap, Reverse, Greed
+             Steal, Gamble, Touch, Skip, Reverse, Greed
         };
     }
 }

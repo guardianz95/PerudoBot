@@ -23,7 +23,7 @@ namespace PerudoBot.GameService.Extensions
                 TurnOrder = gamePlayer.TurnOrder,
                 Dice = gamePlayer.CurrentGamePlayerRound?.Dice.ToIntegerDice(),
                 HiddenDiceIndeces = gamePlayer.CurrentGamePlayerRound?.Dice.GetHiddenDiceIndeces(),
-                AvailablePoints = gamePlayer.Player.AvailablePoints,
+                Points = gamePlayer.Player.Points,
                 PlayerMetadata = gamePlayer.Player.Metadata.ToDictionary(x => x.Key, x => x.Value),
                 GamePlayerMetadata = gamePlayer.Metadata.ToDictionary(x => x.Key, x => x.Value)
             };

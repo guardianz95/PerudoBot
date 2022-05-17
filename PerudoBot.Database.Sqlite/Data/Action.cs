@@ -61,8 +61,16 @@ namespace PerudoBot.Database.Data
         public virtual Action TargetAction { get; set; }
 
         public int BetAmount { get; set; }
+
+        public double BetOdds { get; set; }
         public string BetType { get; set; }
 
-        public bool? IsSuccessful { get; set; }
+        public bool IsSuccessful { get; set; }
+
+        [NotMapped]
+        public int BetQuantity => ((Bid)TargetAction).Quantity;
+
+        [NotMapped]
+        public int BetPips => ((Bid)TargetAction).Pips;
     }
 }
