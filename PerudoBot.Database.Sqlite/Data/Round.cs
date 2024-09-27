@@ -25,6 +25,8 @@ namespace PerudoBot.Database.Data
 
         public Action LatestAction => Actions.LastOrDefault();
 
+        public Bid LatestBid => Actions.OfType<Bid>().LastOrDefault();
+
     }
 
     public class StandardRound : Round

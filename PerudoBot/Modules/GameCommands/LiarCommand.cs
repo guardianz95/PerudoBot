@@ -1,6 +1,8 @@
 ﻿using Discord;
 using Discord.Commands;
+using PerudoBot.Database.Data;
 using PerudoBot.Extensions;
+using PerudoBot.GameService;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,8 +34,10 @@ namespace PerudoBot.Modules
                 playerWhoCalledLiar = playerWhoLastSentMessage;
             }
 
-            var liarResult = game.Liar(playerWhoCalledLiar);
-            if (liarResult == null) return;
+            var roundResult = game.Liar(playerWhoCalledLiar);
+            if (roundResult == null) return;
+
+            var liarResult = roundResult.LiarResult;
 
             DeleteCommandFromDiscord();
 
@@ -75,9 +79,26 @@ namespace PerudoBot.Modules
                 }
             }
 
+            await SendBetResuls(roundResult.Bets);
             await SendRoundSummary();
 
             await StartNewRound(game);
+        }
+
+        private async Task SendBetResuls(List<Bet> bets)
+        {
+            foreach (var bet in bets)
+            {
+                var adustedOdds = Math.Max(Math.Min(bet.BetOdds, 4.0), 1.5);
+
+                var pointsGained = (int)Math.Round(bet.BetAmount * adustedOdds);
+                if (bet.IsSuccessful) AddPoints(bet.BettingPlayer.Id, pointsGained);
+
+                var winsOrLoses = bet.IsSuccessful ? "wins" : "loses";
+                var odds = bet.IsSuccessful ? $"*(x{adustedOdds:0.0})* " : "";
+                var pointDisplay = bet.IsSuccessful ? pointsGained : bet.BetAmount;
+                await SendMessageAsync($":dollar: {bet.BettingPlayer.Name} **{winsOrLoses} {pointDisplay}** {odds}points betting {bet.BetType.ToLower()} on `{bet.BetQuantity}` ˣ {bet.BetPips.ToEmoji()}.");
+            }
         }
 
         private async Task SendRoundSummary()

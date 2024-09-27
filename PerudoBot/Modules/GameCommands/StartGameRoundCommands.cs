@@ -72,16 +72,7 @@ namespace PerudoBot.Modules
 
             if (game.HasBots())
             {
-                var botMessage = new
-                {
-                    nextPlayer = nextPlayer.GetDiscordId(_db),
-                    gameDice = game.GetAllDice().Count,
-                    round = game.GetCurrentRoundNumber()
-                };
-
-                await Context.Message.Channel.ModifyMessageAsync(ulong.Parse(game.GetMetadata("BotUpdateMessageId")),
-                    x => x.Content = $"||`{JsonConvert.SerializeObject(botMessage)}`||");
-
+                await UpdateBotUpdateMessage(game, null);
                 updateMessage += $" ||`@bots update {game.GetMetadata("BotUpdateMessageId")}`||";
             }
 
@@ -94,7 +85,7 @@ namespace PerudoBot.Modules
 
             var players = roundStatus.ActivePlayers
                             .OrderBy(x => x.TurnOrder)
-                            .Select(x => $"`{x.Dice.Count}` {x.Name}");
+                            .Select(x => $"`{x.Dice.Count}` {x.Name} `{x.Points} pts`");
 
             var playerList = string.Join("\n", players);
 

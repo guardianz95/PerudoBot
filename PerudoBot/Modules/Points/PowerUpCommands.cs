@@ -33,7 +33,7 @@ namespace PerudoBot.Modules
 
             if (!game.HasPlayerWithDice(stealFromPlayerId) || stealFrom.IsBot)
             {
-                await SendMessageAsync($"Steal target must be a human player with dice");
+                await SendMessageAsync($"Steal target must be a human player with dice.");
                 return;
             }
 
@@ -41,17 +41,16 @@ namespace PerudoBot.Modules
 
             if (previousBid?.GamePlayer.PlayerId == stealFromPlayerId)
             {
-                await SendMessageAsync($"You can't steal from a player that just bid");
+                await SendMessageAsync($"You can't steal from a player that just bid.");
                 return;
             }
 
             var stealFromPlayer = game.GetPlayer(stealFromPlayerId);
-            var numberToSteal = _random.Next(2, 4);
-            numberToSteal = Math.Min(numberToSteal, stealFromPlayer.Dice.Count - 1);
+            var numberToSteal = Math.Min(3, stealFromPlayer.Dice.Count - 1);
 
             if (numberToSteal < 1)
             {
-                await SendMessageAsync($"Steal target must be a player with more than one dice");
+                await SendMessageAsync($"Steal target must be a player with more than one dice.");
                 return;
             }
 
@@ -60,7 +59,7 @@ namespace PerudoBot.Modules
             var stolenDice = game.RemoveRandomDice(stealFromPlayerId, numberToSteal);
             game.AddDice(powerUpPlayerId, stolenDice, isMystery: true);
 
-            await SendMessageAsync($":zap: {powerUpPlayer.Name} stole {numberToSteal} mystery dice from {stealFromPlayer.Name}");
+            await SendMessageAsync($":zap: **Steal**: {powerUpPlayer.Name} takes {numberToSteal} mystery dice from {stealFromPlayer.Name}.");
 
             stealFromPlayer = game.GetPlayer(stealFromPlayerId);
             powerUpPlayer = game.GetPlayer(powerUpPlayer.PlayerId);
@@ -81,54 +80,45 @@ namespace PerudoBot.Modules
 
             if (!await AbleToUsePowerUp(game, powerUpPlayer, PowerUps.Gamble)) return;
 
+            var playerDiceCount = powerUpPlayer.Dice.Count;
             var chanceRoll = _random.Next(0, 100);
 
-            if (chanceRoll < 1)
+            if (chanceRoll < 10)
             {
-                game.AddDice(powerUpPlayerId, new List<int> { 1, 1, 1 });
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} got three powerful dice.");
-            }
-            else if (chanceRoll < 4)
-            {
-                game.AddDice(powerUpPlayerId, new List<int> { 1, 1 });
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} got two powerful dice.");
-            }
-            else if (chanceRoll < 10)
-            {
-                game.AddDice(powerUpPlayerId, new List<int> { 1 });
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} got a powerful die.");
-            }
-            else if (chanceRoll < 25)
-            {
-                game.AddRandomDice(powerUpPlayerId, 2);
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} got two random dice.");
-            }
-            else if (chanceRoll < 50)
-            {
-                game.AddRandomDice(powerUpPlayerId, 1);
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} got a random die.");
-            }
-            else if (chanceRoll < 75)
-            {
-                var diceToReroll = (int) Math.Ceiling(powerUpPlayer.Dice.Count / 2.0);
-                game.RemoveRandomDice(powerUpPlayerId, diceToReroll);
-                game.AddRandomDice(powerUpPlayerId, diceToReroll);
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} rerolled some dice.");
+                game.RemoveRandomDice(powerUpPlayerId, playerDiceCount);
+                for (int i = 0; i < playerDiceCount; i++) game.AddDice(powerUpPlayerId, new List<int> { 1 });
             }
             else
             {
-                game.AddRandomDice(powerUpPlayerId, 1, isMystery: true);
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} got a mystery die.");
+                game.RemoveRandomDice(powerUpPlayerId, playerDiceCount);
+                game.AddRandomDice(powerUpPlayerId, playerDiceCount);
             }
 
+            await SendMessageAsync($":zap: **Gamble**: {powerUpPlayer.Name} rerolled their dice.");
             powerUpPlayer = game.GetPlayer(powerUpPlayer.PlayerId);
 
             var playersToUpates = new List<PlayerData> { powerUpPlayer };
             await SendOutDice(playersToUpates, isUpdate: true);
         }
 
-        [Command("lifetap")]
-        public async Task Lifetap()
+        [Command("reverse")]
+        public async Task Reverse()
+        {
+            SetGuildAndChannel();
+            var game = _gameHandler.GetActiveGame();
+            if (game == null) return;
+
+            var powerUpPlayerId = GetPlayerId(Context.User.Id, Context.Guild.Id);
+            var powerUpPlayer = game.GetPlayer(powerUpPlayerId);
+
+            if (!await AbleToUsePowerUp(game, powerUpPlayer, PowerUps.Reverse)) return;
+
+            game.ReversePlayerOrder();
+            await SendMessageAsync($":zap: **Reverse**: {powerUpPlayer.Name} changed player order.");
+        }
+
+        [Command("skip")]
+        public async Task Skip()
         {
             SetGuildAndChannel();
             var game = _gameHandler.GetActiveGame();
@@ -142,25 +132,60 @@ namespace PerudoBot.Modules
             if (playerDiceCount >= 5 && game.GetMode() == GameMode.Reverse) return;
             if (playerDiceCount != 5 && game.GetMode() != GameMode.Reverse) return;
 
-            if (!await AbleToUsePowerUp(game, powerUpPlayer, PowerUps.Lifetap)) return;
+            if (!await AbleToUsePowerUp(game, powerUpPlayer, PowerUps.Skip)) return;
 
-            game.AddRandomDice(powerUpPlayerId, 3);
+            var nextPlayer = game.SkipTurn();            
 
             if (game.GetMode() == GameMode.Reverse)
             {
                 game.SetPlayerDice(powerUpPlayerId, playerDiceCount + 1);
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} loses a life to get three random dice this round.");
             }
             else
             {
                 game.SetPlayerDice(powerUpPlayerId, 1);
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} loses all their lives but one to get three random dice this round.");
             }
 
-            powerUpPlayer = game.GetPlayer(powerUpPlayer.PlayerId);
+            var updateMessage = $":zap: **Skip**: {powerUpPlayer.Name} pays costly price to skip their turn. {nextPlayer.GetMention(_db)} is up.";
 
-            var playersToUpates = new List<PlayerData> { powerUpPlayer };
-            await SendOutDice(playersToUpates, isUpdate: true);
+            if (game.HasBots())
+            {
+                var latestBid = game.GetCurrentRound().LatestBid;
+                await UpdateBotUpdateMessage(game, latestBid);
+                updateMessage += $" ||`@bots update {game.GetMetadata("BotUpdateMessageId")}`||";
+            }
+
+            await SendMessageAsync(updateMessage);
+        }
+
+        [Command("greed")]
+        public async Task Greed()
+        {
+            SetGuildAndChannel();
+            var game = _gameHandler.GetActiveGame();
+            if (game == null) return;
+
+            var powerUpPlayerId = GetPlayerId(Context.User.Id, Context.Guild.Id);
+            var powerUpPlayer = game.GetPlayer(powerUpPlayerId);
+
+            var playerDiceCount = powerUpPlayer.NumberOfDice;
+
+            if (playerDiceCount >= 5 && game.GetMode() == GameMode.Reverse) return;
+            if (playerDiceCount != 5 && game.GetMode() != GameMode.Reverse) return;
+
+            if (!await AbleToUsePowerUp(game, powerUpPlayer, PowerUps.Greed)) return;
+
+            AddPoints(powerUpPlayerId, PowerUps.GREED_POINTS);
+
+            if (game.GetMode() == GameMode.Reverse)
+            {
+                game.SetPlayerDice(powerUpPlayerId, playerDiceCount + 1);
+                await SendMessageAsync($":zap: **Greed**: {powerUpPlayer.Name} loses a life to get {PowerUps.GREED_POINTS} points.");
+            }
+            else
+            {
+                game.SetPlayerDice(powerUpPlayerId, 1);
+                await SendMessageAsync($":zap: **Greed**: {powerUpPlayer.Name} loses all their lives but one to get {PowerUps.GREED_POINTS} points.");
+            }
         }
 
         [Command("touch")]
@@ -197,14 +222,14 @@ namespace PerudoBot.Modules
             var touchedCount = allDice.Where(x => x == touchPips || x == 1).Count();
 
             var quickMath = allDice.Count / 3.0;
-
+            
             if (touchedCount > quickMath)
             {
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} touched {touchPips}s and they felt warm.");
+                await SendMessageAsync($":zap: **Touch**: {powerUpPlayer.Name} checked {touchPips}s and they felt :fire:");
             }
             else
             {
-                await SendMessageAsync($":zap: {powerUpPlayer.Name} touched {touchPips}s and they felt cool.");
+                await SendMessageAsync($":zap: **Touch**: {powerUpPlayer.Name} checked {touchPips}s and they felt :ice_cube:");
             }
         }
 
@@ -212,8 +237,9 @@ namespace PerudoBot.Modules
         public async Task PowerUpInfo()
         {
             var builder = new EmbedBuilder().WithTitle($"Power Up Information");
+            var powerUpList = PowerUps.PowerUpList.OrderByDescending(x => x.Cost);
 
-            foreach (var powerUp in PowerUps.PowerUpList)
+            foreach (var powerUp in powerUpList)
             {
                 builder.AddField($":zap: {powerUp.Name} - `{powerUp.Cost}` pts", $"{powerUp.Description}");
             }
@@ -221,23 +247,6 @@ namespace PerudoBot.Modules
             var embed = builder.Build();
 
             await Context.Channel.SendMessageAsync(embed: embed).ConfigureAwait(false);
-        }
-
-        [Command("odds")]
-        public async Task GambleOdds()
-        {
-            var odds =  "**Gamble Odds**\n" +
-                        "```\n" +
-                        "25% = Reroll some of your dice\n" +
-                        "25% = Gain a new mystery die\n" +
-                        "25% = Gain a new regular die\n" +
-                        "15% = Gain two new regular dice\n" +
-                        " 6% = Gain a one\n" +
-                        " 3% = Gain two ones\n" +
-                        " 1% = Gain three ones\n" +
-                        "```";
-
-            await SendMessageAsync(odds);
         }
 
         private async Task<bool> AbleToUsePowerUp(GameObject game, PlayerData player, PowerUp powerUp)
@@ -250,8 +259,8 @@ namespace PerudoBot.Modules
                 return false;
             }
 
-            var userId = GetUserId(player);
-            if (!powerUp.OutOfTurn && Context.User.Id != userId)
+            var currentPlayer = game.GetCurrentPlayer();
+            if (!powerUp.OutOfTurn && currentPlayer.PlayerId != player.PlayerId)
             {
                 await SendMessageAsync($"You can only use :zap: {powerUp.Name} on your own turn");
                 return false;
@@ -263,7 +272,7 @@ namespace PerudoBot.Modules
                 return false;
             }
 
-            if (GetAvailablePoints(player.PlayerId) < powerUp.Cost)
+            if (player.Points < powerUp.Cost)
             {
                 await SendMessageAsync($"You don't have enough points to use :zap: {powerUp.Name}");
                 return false;
@@ -295,8 +304,7 @@ namespace PerudoBot.Modules
 
             if (powerUp.Cost > 0)
             {
-                AddUsedPoints(player.PlayerId, powerUp.Cost);
-                //await SendMessageAsync($":grey_exclamation: {player.Name} spent `{powerUp.Cost}` points to use `{powerUp.Name}`.");
+                AddPoints(player.PlayerId, -powerUp.Cost);
             }
 
             AddPowerUpUses(game, player.PlayerId, specifcPowerPerGame);

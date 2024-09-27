@@ -1,7 +1,9 @@
 ﻿using Discord.Commands;
 using Newtonsoft.Json;
+using PerudoBot.Database.Data;
 using PerudoBot.Extensions;
 using PerudoBot.GameService;
+using PerudoBot.GameService.Extensions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -60,7 +62,7 @@ namespace PerudoBot.Modules
                 await SendMessageAsync($"Player order *REVERSED*");
             }
 
-            game.Bid(currentPlayer.PlayerId, quantity, pips);
+            var newBid = game.Bid(currentPlayer.PlayerId, quantity, pips);
             DeleteCommandFromDiscord();
 
             var nextPlayer = game.GetCurrentPlayer();
@@ -68,19 +70,7 @@ namespace PerudoBot.Modules
 
             if (game.HasBots())
             {
-                var botMessage = new
-                {
-                    currentPlayer = currentPlayer.GetDiscordId(_db),
-                    nextPlayer = nextPlayer.GetDiscordId(_db),
-                    round = game.GetCurrentRoundNumber(),
-                    action = BidToActionIndex(quantity, pips),
-                    gameDice = game.GetAllDice().Count,
-                    playerDice = currentPlayer.Dice.Count
-                };
-
-                await Context.Message.Channel.ModifyMessageAsync(ulong.Parse(game.GetMetadata("BotUpdateMessageId")),
-                    x => x.Content = $"||`{JsonConvert.SerializeObject(botMessage)}`||");
-
+                await UpdateBotUpdateMessage(game, newBid);
                 updateMessage += $" ||`@bots update {game.GetMetadata("BotUpdateMessageId")}`||";
             }
 
